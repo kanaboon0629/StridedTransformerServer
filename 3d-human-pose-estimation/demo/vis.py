@@ -301,7 +301,7 @@ def get_pose3D(video_path, output_dir):
 
         plt.savefig(output_dir_3D + str(('%04d' % i)) + '_3D.png', dpi=200, format='png', bbox_inches='tight')
 
-    with open("skeleton_coord.json", "w", encoding="utf-8") as f:
+    with open("output.json", "w", encoding="utf-8") as f:
         json.dump(joint_coord_dict, f, indent=4)
 
     print('Generating 3D pose successful!')

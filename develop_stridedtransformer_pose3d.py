@@ -19,21 +19,21 @@ import sys
 
 ## 動画のトリミング
 """
-video_url = 'https://youtu.be/cZHn_zmvL9I?si=Sx0p-KhTJqnI4Ro9' #@param {type:"string"}
+# video_url = 'https://youtu.be/cZHn_zmvL9I?si=Sx0p-KhTJqnI4Ro9' #@param {type:"string"}
 
-# #動画の切り抜き範囲(秒)を指定
-# #30秒以上の場合OOM発生の可能性が高いため注意
-start_sec =  13
-end_sec =  14
+# # #動画の切り抜き範囲(秒)を指定
+# # #30秒以上の場合OOM発生の可能性が高いため注意
+# start_sec =  13
+# end_sec =  14
 
-# # コマンドライン引数を受け取る
-# if len(sys.argv) < 4:
-#     print("Usage: script.py <video_url> <start_sec> <end_sec>")
-#     sys.exit(1)
+# コマンドライン引数を受け取る
+if len(sys.argv) < 4:
+    print("Usage: script.py <video_url> <start_sec> <end_sec>")
+    sys.exit(1)
 
-# video_url = sys.argv[1]
-# start_sec = int(sys.argv[2])
-# end_sec = int(sys.argv[3])
+video_url = sys.argv[1]
+start_sec = int(sys.argv[2])
+end_sec = int(sys.argv[3])
 
 (start_pt, end_pt) = (start_sec, end_sec)
 
