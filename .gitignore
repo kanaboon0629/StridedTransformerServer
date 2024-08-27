@@ -174,4 +174,5 @@ cython_debug/
 3d-human-pose-estimation/demo/output/sample_video/sample_video.mp4
 3d-human-pose-estimation/demo/video/*
 
-skeleton_coord.json
+output.json
+uploads.mp4

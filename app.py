@@ -8,16 +8,37 @@ app = Flask(__name__)
 
 # 仮想環境のパスとPythonスクリプトのパスを指定
 VENV_PATH = 'myvenv'
-SCRIPT_PATH = 'develop_stridedtransformer_pose3d.py'
-
-# デフォルト値を設定
-DEFAULT_URL = 'https://youtu.be/cZHn_zmvL9I?si=Sx0p-KhTJqnI4Ro9'
-DEFAULT_START = 13
-DEFAULT_END = 14
+SCRIPT_FROM_YOUTUBE = 'develop_stridedtransformer_pose3d.py'
 JSON_OUTPUT_PATH = 'output.json'
 
-@app.route('/run-script', methods=['POST'])
-def run_script():
+VIDEO_OUTPUT_PATH = 'uploads.mp4'
+
+@app.route('/run-script-from-videofile', methods=['POST'])
+def run_script_from_videofile():
+    try:
+        if 'file' not in request.files:
+            app.logger.error("No file part in the request")
+            raise ValueError("No file part in the request")
+
+        file = request.files['file']
+        if file.filename == '':
+            app.logger.error("No selected file")
+            raise ValueError("No selected file")
+
+        file.save(VIDEO_OUTPUT_PATH)
+
+        app.logger.info(f"Video file saved to: {VIDEO_OUTPUT_PATH}")
+
+        return jsonify({'message': 'File received and saved successfully'})
+
+    except Exception as e:
+        error_message = traceback.format_exc()
+        app.logger.error(f"An error occurred: {error_message}")
+        return jsonify({'error': str(e), 'details': error_message}), 500
+
+
+@app.route('/run-script-from-youtube', methods=['POST'])
+def run_script_from_youtube():
     try:
         # リクエストデータを取得
         data = request.json
@@ -36,7 +57,7 @@ def run_script():
             raise ValueError("Start and end parameters must be integers")
 
         # コマンドの構築
-        command = f'{os.path.join(VENV_PATH, "bin", "python3")} {SCRIPT_PATH} "{url}" {start} {end}'
+        command = f'{os.path.join(VENV_PATH, "bin", "python3")} {SCRIPT_FROM_YOUTUBE} "{url}" {start} {end}'
         app.logger.info(f"Running command: {command}")
 
         # コマンドの実行
