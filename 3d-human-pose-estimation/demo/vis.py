@@ -315,25 +315,11 @@ def get_pose3D(video_path, output_dir):
     output_dir_pose = os.path.join(output_dir, 'pose/')
     clean_directory(output_dir_pose)
     for i in tqdm(range(len(image_2d_dir))):
-        image_2d = plt.imread(image_2d_dir[i])
-        image_3d = plt.imread(image_3d_dir[i])
-
-        # Crop
-        edge = (image_2d.shape[1] - image_2d.shape[0]) // 2
-        image_2d = image_2d[:, edge:image_2d.shape[1] - edge]
-
-        edge = 130
-        image_3d = image_3d[edge:image_3d.shape[0] - edge, edge:image_3d.shape[1] - edge]
-
-        # Show
-        font_size = 12
-        fig, axes = plt.subplots(1, 2, figsize=(9.6, 5.4))
-
-        for i in tqdm(range(len(image_2d_dir))):
             image_2d = plt.imread(image_2d_dir[i])
             image_3d = plt.imread(image_3d_dir[i])
 
             # アスペクト比を保持しつつ画像全体を収める
+            font_size = 12
             fig = plt.figure(figsize=(9.6, 5.4))
             ax1 = plt.subplot(121)
             ax1.imshow(image_2d)
