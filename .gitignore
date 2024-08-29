@@ -175,4 +175,4 @@ cython_debug/
 3d-human-pose-estimation/demo/video/*
 
 output.json
-uploads.mp4
+output.txt
