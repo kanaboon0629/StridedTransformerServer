@@ -93,11 +93,11 @@ def show3Dpose(vals, ax): #vals:shape:(17,3),17頂点x,y,z:3方向
         15:"right_lowerarm",
         16:"right_hand"
     }
-    print()
+    # print()
     d ={}
     for i in range(len(vals)):
         x,y,z = map(float,vals[i])
-        print("joint_id:{},(x,y,z)=({:.3f},{:.3f},{:.3f}),unity座標系(x,y,z)=({:.3f},{:.3f},{:.3f})".format(i,x,y,z,y,z,-x))
+        # print("joint_id:{},(x,y,z)=({:.3f},{:.3f},{:.3f}),unity座標系(x,y,z)=({:.3f},{:.3f},{:.3f})".format(i,x,y,z,y,z,-x))
         ax.scatter(x, y, z, s=3)
         #label = '  %s (%.2f %.2f %.2f)' % (i,x, y, z)
         label = '  %s' % (i)
@@ -131,7 +131,7 @@ def get_pose2D(video_path, output_dir):
     width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
     height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
 
-    print('\nGenerating 2D pose...')
+    print('Generating 2D pose...')
     keypoints, scores = hrnet_pose(video_path, det_dim=416, num_peroson=1, gen_output=True)
     keypoints, scores, valid_frames = h36m_coco_format(keypoints, scores)
     re_kpts = revise_kpts(keypoints, scores, valid_frames)
@@ -198,7 +198,7 @@ def get_pose3D(video_path, output_dir):
     if model_path is None:
         raise FileNotFoundError("No valid model file found in the directory")
 
-    print(f"Loading model from {model_path}")
+    # print(f"Loading model from {model_path}")
     map_location = torch.device('cpu')  # デフォルトはCPU
     if torch.cuda.is_available():
         map_location = None  # GPUが利用可能な場合はデフォルト設定を使用
@@ -224,11 +224,11 @@ def get_pose3D(video_path, output_dir):
     joint_coord_dict = {}
 
     # 3D pose generation
-    print('\nGenerating 3D pose...')
+    print('Generating 3D pose...')
     for i in tqdm(range(video_length)):
         ret, img = cap.read()
         if not ret:
-            print(f"Frame {i} could not be read. Skipping.")
+            #print(f"Frame {i} could not be read. Skipping.")
             continue
 
         img_size = img.shape
@@ -311,7 +311,7 @@ def get_pose3D(video_path, output_dir):
     image_2d_dir = sorted(glob.glob(os.path.join(output_dir_2D, '*.png')))
     image_3d_dir = sorted(glob.glob(os.path.join(output_dir_3D, '*.png')))
 
-    print('\nGenerating demo...')
+    print('Generating demo...')
     output_dir_pose = os.path.join(output_dir, 'pose/')
     clean_directory(output_dir_pose)
     for i in tqdm(range(len(image_2d_dir))):
