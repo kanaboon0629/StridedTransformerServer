@@ -315,30 +315,24 @@ def get_pose3D(video_path, output_dir):
     output_dir_pose = os.path.join(output_dir, 'pose/')
     clean_directory(output_dir_pose)
     for i in tqdm(range(len(image_2d_dir))):
-        image_2d = plt.imread(image_2d_dir[i])
-        image_3d = plt.imread(image_3d_dir[i])
+            image_2d = plt.imread(image_2d_dir[i])
+            image_3d = plt.imread(image_3d_dir[i])
 
-        # Crop
-        edge = (image_2d.shape[1] - image_2d.shape[0]) // 2
-        image_2d = image_2d[:, edge:image_2d.shape[1] - edge]
+            # アスペクト比を保持しつつ画像全体を収める
+            font_size = 12
+            fig = plt.figure(figsize=(9.6, 5.4))
+            ax1 = plt.subplot(121)
+            ax1.imshow(image_2d)
+            ax1.axis('off')  # 軸を表示しない
+            ax1.set_title("Input", fontsize=font_size)
 
-        edge = 130
-        image_3d = image_3d[edge:image_3d.shape[0] - edge, edge:image_3d.shape[1] - edge]
+            ax2 = plt.subplot(122)
+            showimage(ax2, image_3d)
+            ax2.set_title("Reconstruction", fontsize=font_size)
 
-        # Show
-        font_size = 12
-        fig = plt.figure(figsize=(9.6, 5.4))
-        ax = plt.subplot(121)
-        showimage(ax, image_2d)
-        ax.set_title("Input", fontsize=font_size)
-
-        ax = plt.subplot(122)
-        showimage(ax, image_3d)
-        ax.set_title("Reconstruction", fontsize=font_size)
-
-        # Save
-        os.makedirs(output_dir_pose, exist_ok=True)
-        plt.savefig(output_dir_pose + str(('%04d' % i)) + '_pose.png', dpi=200, bbox_inches='tight')
+            # 保存
+            os.makedirs(output_dir_pose, exist_ok=True)
+            plt.savefig(output_dir_pose + str(('%04d' % i)) + '_pose.png', dpi=200, bbox_inches='tight')
 
 
 if __name__ == "__main__":

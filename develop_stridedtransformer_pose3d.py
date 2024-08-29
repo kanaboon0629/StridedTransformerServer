@@ -15,13 +15,17 @@ import math
 import subprocess
 import sys
 
-# コマンドライン引数を受け取る
-if len(sys.argv) < 4:
-    sys.exit(1)
+# # コマンドライン引数を受け取る
+# if len(sys.argv) < 4:
+#     sys.exit(1)
 
-video_url = sys.argv[1]
-start_sec = int(sys.argv[2])
-end_sec = int(sys.argv[3])
+# video_url = sys.argv[1]
+# start_sec = int(sys.argv[2])
+# end_sec = int(sys.argv[3])
+
+video_url = "https://youtu.be/wYzGtkcttVE?si=IFku7ImYEIAP7ePM"
+start_sec = 3
+end_sec = 4
 
 (start_pt, end_pt) = (start_sec, end_sec)
 
