@@ -15,6 +15,7 @@ VIDEO_OUTPUT_PATH = '3d-human-pose-estimation/demo/video/input_clip.mp4'
 VIDEO_NAME = 'input_clip.mp4'
 OUTPUT_LOG_PATH = 'output.txt'
 SCRIPT_FROM_YOUTUBE = 'develop_stridedtransformer_pose3d.py'
+VIDEO_SENT_PATH = '3d-human-pose-estimation/demo/output/input_clip/input_clip.mp4'
 
 # グローバル変数
 stop_event = threading.Event()
@@ -32,7 +33,6 @@ def run_script_from_videofile():
                 log_file.flush()
         process.wait()
     stop_event.set()
-
 
 def run_script_from_youtube(url, start, end):
     command = f'{os.path.join(VENV_PATH, "bin", "python3")} {SCRIPT_FROM_YOUTUBE} "{url}" {start} {end}'
@@ -150,6 +150,23 @@ def run_script_from_youtube_route():
 
         return jsonify({'error': 'JSON file not generated or is empty'}), 500
 
+    except Exception as e:
+        error_message = traceback.format_exc()
+        app.logger.error(f"An error occurred: {error_message}")
+        return jsonify({'error': str(e), 'details': error_message}), 500
+
+@app.route('/download-video', methods=['GET'])
+def download_video():
+    """
+    動画ファイルをクライアントに送信するエンドポイント
+    """
+    try:
+        if os.path.exists(VIDEO_SENT_PATH):
+            app.logger.info(f"Sending video file: {VIDEO_SENT_PATH}")
+            return send_file(VIDEO_SENT_PATH, as_attachment=True)
+        else:
+            app.logger.error("Video file not found")
+            return jsonify({'error': 'Video file not found'}), 404
     except Exception as e:
         error_message = traceback.format_exc()
         app.logger.error(f"An error occurred: {error_message}")
