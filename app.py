@@ -18,44 +18,63 @@ SCRIPT_FROM_YOUTUBE = 'develop_stridedtransformer_pose3d.py'
 VIDEO_SENT_PATH = '3d-human-pose-estimation/demo/output/input_clip/input_clip.mp4'
 
 # グローバル変数
+process = None
 stop_event = threading.Event()
 previous_line = ""
 
+def stop_process():
+    global process
+    if process and process.poll() is None:  # プロセスがまだ実行中の場合
+        process.terminate()  # プロセスを終了
+        process.wait()  # プロセスが終了するのを待つ
+
 def run_script_from_videofile():
+    global process
     command = f'{os.path.join(VENV_PATH, "bin", "python3")} {SCRIPT_FROM_VIDEOFILE} --video {VIDEO_NAME}'
-    with subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=os.environ.copy()) as process:
-        with open(OUTPUT_LOG_PATH, 'w') as log_file:
-            for line in process.stdout:
-                log_file.write(line)
-                log_file.flush()
-            for line in process.stderr:
-                log_file.write(line)
-                log_file.flush()
-        process.wait()
+    global process
+    process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=os.environ.copy())
+    with open(OUTPUT_LOG_PATH, 'w') as log_file:
+        for line in process.stdout:
+            if stop_event.is_set():
+                break
+            log_file.write(line)
+            log_file.flush()
+        for line in process.stderr:
+            if stop_event.is_set():
+                break
+            log_file.write(line)
+            log_file.flush()
     stop_event.set()
+    stop_process()  # プロセス終了を呼び出す
 
 def run_script_from_youtube(url, start, end):
+    global process
     command = f'{os.path.join(VENV_PATH, "bin", "python3")} {SCRIPT_FROM_YOUTUBE} "{url}" {start} {end}'
-    with subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=os.environ.copy()) as process:
-        with open(OUTPUT_LOG_PATH, 'w') as log_file:
-            for line in process.stdout:
-                if any(keyword in line for keyword in [
-                    'Getting available formats for the video...',
-                    'Downloading video from YouTube...',
-                    'Extracting subclip...',
-                    'Changing speed of the video...',
-                    'Generating 2D pose...',
-                    'Generating 3D pose...',
-                    'Generating demo...',
-                    'Generating demo successful!'
-                ]):
-                    log_file.write(line)
-                    log_file.flush()
-            for line in process.stderr:
+    global process
+    process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=os.environ.copy())
+    with open(OUTPUT_LOG_PATH, 'w') as log_file:
+        for line in process.stdout:
+            if stop_event.is_set():
+                break
+            if any(keyword in line for keyword in [
+                'Getting available formats for the video...',
+                'Downloading video from YouTube...',
+                'Extracting subclip...',
+                'Changing speed of the video...',
+                'Generating 2D pose...',
+                'Generating 3D pose...',
+                'Generating demo...',
+                'Generating demo successful!'
+            ]):
                 log_file.write(line)
                 log_file.flush()
-        process.wait()
+        for line in process.stderr:
+            if stop_event.is_set():
+                break
+            log_file.write(line)
+            log_file.flush()
     stop_event.set()
+    stop_process()  # プロセス終了を呼び出す
 
 def get_last_line(log_file_path):
     with open(log_file_path, 'r') as log_file:
@@ -87,6 +106,9 @@ def stream():
 
 @app.route('/run-script-from-videofile', methods=['POST'])
 def run_script_from_videofile_route():
+    global stop_event
+    stop_event.clear()  # イベントをクリア
+    
     # OUTPUT_LOG_PATHの中身を空にする
     open(OUTPUT_LOG_PATH, 'w').close()
     
@@ -119,6 +141,9 @@ def run_script_from_videofile_route():
 
 @app.route('/run-script-from-youtube', methods=['POST'])
 def run_script_from_youtube_route():
+    global stop_event
+    stop_event.clear()  # イベントをクリア
+    
     # OUTPUT_LOG_PATHの中身を空にする
     open(OUTPUT_LOG_PATH, 'w').close()
     
@@ -171,6 +196,13 @@ def download_video():
         error_message = traceback.format_exc()
         app.logger.error(f"An error occurred: {error_message}")
         return jsonify({'error': str(e), 'details': error_message}), 500
+
+@app.route('/cancel', methods=['POST'])
+def cancel_script():
+    global stop_event
+    stop_event.set()  # 停止イベントを設定
+    stop_process()  # プロセス終了を呼び出す
+    return jsonify({'status': 'canceled'})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True, threaded=True)
