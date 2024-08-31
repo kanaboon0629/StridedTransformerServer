@@ -31,7 +31,6 @@ def stop_process():
 def run_script_from_videofile():
     global process
     command = f'{os.path.join(VENV_PATH, "bin", "python3")} {SCRIPT_FROM_VIDEOFILE} --video {VIDEO_NAME}'
-    global process
     process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=os.environ.copy())
     with open(OUTPUT_LOG_PATH, 'w') as log_file:
         for line in process.stdout:
@@ -50,7 +49,6 @@ def run_script_from_videofile():
 def run_script_from_youtube(url, start, end):
     global process
     command = f'{os.path.join(VENV_PATH, "bin", "python3")} {SCRIPT_FROM_YOUTUBE} "{url}" {start} {end}'
-    global process
     process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=os.environ.copy())
     with open(OUTPUT_LOG_PATH, 'w') as log_file:
         for line in process.stdout:
@@ -197,12 +195,22 @@ def download_video():
         app.logger.error(f"An error occurred: {error_message}")
         return jsonify({'error': str(e), 'details': error_message}), 500
 
-@app.route('/cancel', methods=['POST'])
-def cancel_script():
-    global stop_event
-    stop_event.set()  # 停止イベントを設定
-    stop_process()  # プロセス終了を呼び出す
-    return jsonify({'status': 'canceled'})
+# @app.route('/cancel', methods=['POST'])
+# def cancel_script():
+#     global stop_event
+#     stop_event.set()  # 停止イベントを設定
+#     stop_process()  # プロセス終了を呼び出す
+#     return jsonify({'status': 'canceled'})
+
+@app.route('/status', methods=['GET'])
+def check_status():
+    """
+    実行中のスクリプトのステータスを返すエンドポイント
+    """
+    if process and process.poll() is None:
+        return jsonify({'status': 'running'})
+    else:
+        return jsonify({'status': 'stopped'})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True, threaded=True)
