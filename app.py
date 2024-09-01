@@ -4,6 +4,7 @@ import os
 import time
 import traceback
 import threading
+import uuid
 
 app = Flask(__name__)
 
@@ -21,6 +22,8 @@ VIDEO_SENT_PATH = '3d-human-pose-estimation/demo/output/input_clip/input_clip.mp
 process = None
 stop_event = threading.Event()
 previous_line = ""
+# スレッド管理のための辞書
+active_threads = {}
 
 def stop_process():
     global process
@@ -36,8 +39,14 @@ def run_script_from_videofile():
         for line in process.stdout:
             if stop_event.is_set():
                 break
-            log_file.write(line)
-            log_file.flush()
+            if any(keyword in line for keyword in [
+                'Generating 2D pose...',
+                'Generating 3D pose...',
+                'Generating demo...',
+                'Generating demo successful!'
+            ]):
+                log_file.write(line)
+                log_file.flush()
         for line in process.stderr:
             if stop_event.is_set():
                 break
@@ -105,9 +114,8 @@ def stream():
 @app.route('/run-script-from-videofile', methods=['POST'])
 def run_script_from_videofile_route():
     global stop_event
-    stop_event.clear()  # イベントをクリア
+    stop_event.clear()
     
-    # OUTPUT_LOG_PATHの中身を空にする
     open(OUTPUT_LOG_PATH, 'w').close()
     
     try:
@@ -120,10 +128,12 @@ def run_script_from_videofile_route():
             app.logger.error("No selected file")
             raise ValueError("No selected file")
 
+        request_id = request.form.get('requestId', str(uuid.uuid4()))
         file.save(VIDEO_OUTPUT_PATH)
         app.logger.info(f"Video file saved to: {VIDEO_OUTPUT_PATH}")
 
         script_thread = threading.Thread(target=run_script_from_videofile)
+        active_threads[request_id] = script_thread
         script_thread.start()
         script_thread.join()
 
@@ -140,34 +150,30 @@ def run_script_from_videofile_route():
 @app.route('/run-script-from-youtube', methods=['POST'])
 def run_script_from_youtube_route():
     global stop_event
-    stop_event.clear()  # イベントをクリア
+    stop_event.clear()
     
-    # OUTPUT_LOG_PATHの中身を空にする
     open(OUTPUT_LOG_PATH, 'w').close()
     
     try:
-        # リクエストデータを取得
         data = request.json
         app.logger.info(f"Received data: {data}")
 
-        # パラメータを取得し、Noneの場合はデフォルト値を使用
         url = data.get('url')
         start = data.get('start')
         end = data.get('end')
+        request_id = data.get('requestId', str(uuid.uuid4()))
 
-        # パラメータの検証
         if not url or start is None or end is None:
             raise ValueError("URL, start and end parameters must be provided")
 
         if not isinstance(start, int) or not isinstance(end, int):
             raise ValueError("Start and end parameters must be integers")
 
-        # スレッドを使ってスクリプトを非同期で実行
         script_thread = threading.Thread(target=run_script_from_youtube, args=(url, start, end))
+        active_threads[request_id] = script_thread
         script_thread.start()
         script_thread.join()
 
-        # JSONファイルが存在するか確認
         if os.path.exists(JSON_OUTPUT_PATH) and os.path.getsize(JSON_OUTPUT_PATH) > 0:
             return send_file(JSON_OUTPUT_PATH, mimetype='application/json', as_attachment=True)
 
@@ -195,12 +201,36 @@ def download_video():
         app.logger.error(f"An error occurred: {error_message}")
         return jsonify({'error': str(e), 'details': error_message}), 500
 
-# @app.route('/cancel', methods=['POST'])
-# def cancel_script():
-#     global stop_event
-#     stop_event.set()  # 停止イベントを設定
-#     stop_process()  # プロセス終了を呼び出す
-#     return jsonify({'status': 'canceled'})
+@app.route('/cancel-request', methods=['POST'])
+def cancel_request():
+    global stop_event
+    try:
+        # JSONのデータが正しいか確認
+        if request.json is None:
+            return jsonify({'error': 'Invalid JSON data provided'}), 400
+        
+        data = request.json
+        request_id = data.get('requestId')
+
+        # requestIdが存在しない場合のチェック
+        if not request_id:
+            return jsonify({'error': 'Request ID must be provided'}), 400
+
+        # アクティブなリクエストのリストにrequestIdが存在するか確認
+        if request_id in active_threads:
+            # スレッドのキャンセル処理（擬似的にスレッドの停止をシミュレート）
+            stop_event.set()
+            del active_threads[request_id]
+            app.logger.info(f"Request {request_id} has been cancelled.")
+            return jsonify({'status': 'cancelled', 'requestId': request_id}), 200
+        else:
+            return jsonify({'error': 'Request ID not found or already completed'}), 404
+
+    except Exception as e:
+        # 例外の詳細を含めたエラーログ
+        error_message = traceback.format_exc()
+        app.logger.error(f"An error occurred: {error_message}")
+        return jsonify({'error': str(e), 'details': error_message}), 500
 
 @app.route('/status', methods=['GET'])
 def check_status():
