@@ -15,53 +15,49 @@ import math
 import subprocess
 import sys
 
-# コマンドライン引数を受け取る
-if len(sys.argv) < 4:
-    sys.exit(1)
-
-video_url = sys.argv[1]
-start_sec = int(sys.argv[2])
-end_sec = int(sys.argv[3])
-
-# video_url = "https://youtu.be/wYzGtkcttVE?si=IFku7ImYEIAP7ePM"
-# start_sec = 3
-# end_sec = 4
-
-(start_pt, end_pt) = (start_sec, end_sec)
-
-download_resolution = 360
-
 full_video_path = os.path.join(base_dir, '3d-human-pose-estimation/demo/video/full_video.mp4')
 file_name = 'input_clip.mp4'
 input_clip_path = os.path.join(base_dir, '3d-human-pose-estimation/demo/video', file_name)
 
-# 利用可能なフォーマットを取得
-print('Getting available formats for the video...')
-ydl_opts = {'listformats': True}
-with YoutubeDL(ydl_opts) as ydl:
-    info_dict = ydl.extract_info(video_url, download=False)
-    formats = info_dict.get('formats', [])
-    
-    # heightがNoneまたは0でないフォーマットのみを対象に最高のフォーマットを選択
-    best_format = max(
-        (fmt for fmt in formats if fmt.get('height') is not None),
-        key=lambda x: x.get('height', 0),
-        default=None
-    )
+# コマンドライン引数を受け取る場合
+if len(sys.argv) == 4:
+    video_url = sys.argv[1]
+    start_sec = int(sys.argv[2])
+    end_sec = int(sys.argv[3])
+    (start_pt, end_pt) = (start_sec, end_sec)
+    download_resolution = 360
 
-if best_format:
-    ydl_opts = {'format': best_format['format_id'], 'overwrites': True, 'outtmpl': full_video_path}
+    # 利用可能なフォーマットを取得
+    print('Getting available formats for the video...')
+    ydl_opts = {'listformats': True}
     with YoutubeDL(ydl_opts) as ydl:
-        print('Downloading video from YouTube...')
-        ydl.download([video_url])
-else:
-    sys.exit(1)
+        info_dict = ydl.extract_info(video_url, download=False)
+        formats = info_dict.get('formats', [])
+        
+        # heightがNoneまたは0でないフォーマットのみを対象に最高のフォーマットを選択
+        best_format = max(
+            (fmt for fmt in formats if fmt.get('height') is not None),
+            key=lambda x: x.get('height', 0),
+            default=None
+        )
 
-# 指定区間切り抜き
-print('Extracting subclip...')
-with VideoFileClip(full_video_path) as video:
-    subclip = video.subclip(start_pt, end_pt)
-    subclip.write_videofile(input_clip_path)
+    if best_format:
+        ydl_opts = {'format': best_format['format_id'], 'overwrites': True, 'outtmpl': full_video_path}
+        with YoutubeDL(ydl_opts) as ydl:
+            print('Downloading video from YouTube...')
+            ydl.download([video_url])
+    else:
+        sys.exit(1)
+
+    # 指定区間切り抜き
+    print('Extracting subclip...')
+    with VideoFileClip(full_video_path) as video:
+        subclip = video.subclip(start_pt, end_pt)
+        subclip.write_videofile(input_clip_path)
+#else:
+    # video_url = "https://youtu.be/wYzGtkcttVE?si=IFku7ImYEIAP7ePM"
+    # start_sec = 3
+    # end_sec = 4
 
 # 動画を読み込み、FPSを変更して別名で保存する関数
 def m_speed_change(path_in, path_out, scale_factor, color_flag):
@@ -95,4 +91,5 @@ color_flag = True
 m_speed_change(path_in, path_out, scale_factor, color_flag)
 
 # 3D Human Pose Estimation
-subprocess.run(["python3", os.path.join(base_dir, '3d-human-pose-estimation/demo/vis.py'), "--video", file_name])
+#subprocess.run(["python3", os.path.join(base_dir, '3d-human-pose-estimation/demo/vis.py'), "--video", file_name])
+subprocess.run(["python3", os.path.join(base_dir, '3d-human-pose-estimation/demo/vis.py'), "--video", slow_motion_filename])
