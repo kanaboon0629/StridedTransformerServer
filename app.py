@@ -5,18 +5,20 @@ import time
 import traceback
 import threading
 import uuid
+import ffmpeg
 
 app = Flask(__name__)
 
 # 定数
 VENV_PATH = 'myvenv'
-SCRIPT_FROM_VIDEOFILE = '3d-human-pose-estimation/demo/vis.py'
+VIS_SCRIPT_PATH = '3d-human-pose-estimation/demo/vis.py'
 JSON_OUTPUT_PATH = 'output.json'
+VIDEO_OUTPUT_DIR = '3d-human-pose-estimation/demo/video/'
 VIDEO_OUTPUT_PATH = '3d-human-pose-estimation/demo/video/input_clip.mp4'
 VIDEO_NAME = 'input_clip.mp4'
 OUTPUT_LOG_PATH = 'output.txt'
-SCRIPT_FROM_YOUTUBE = 'develop_stridedtransformer_pose3d.py'
-VIDEO_SENT_PATH = '3d-human-pose-estimation/demo/output/input_clip/input_clip.mp4'
+POSE3_SCRIPT_PATH = 'develop_stridedtransformer_pose3d.py'
+VIDEO_SENT_PATH = '3d-human-pose-estimation/demo/output/fps_changed_input_video/fps_changed_input_video.mp4'
 
 # グローバル変数
 process = None
@@ -24,6 +26,17 @@ stop_event = threading.Event()
 previous_line = ""
 # スレッド管理のための辞書
 active_threads = {}
+
+valid_messages = [
+    'Getting available formats for the video...',
+    'Downloading video from YouTube...',
+    'Extracting subclip...',
+    'Changing speed of the video...',
+    'Generating 2D pose...',
+    'Generating 3D pose...',
+    'Generating demo...',
+    'Generating demo successful!'
+]
 
 def stop_process():
     global process
@@ -33,18 +46,17 @@ def stop_process():
 
 def run_script_from_videofile():
     global process
-    command = f'{os.path.join(VENV_PATH, "bin", "python3")} {SCRIPT_FROM_VIDEOFILE} --video {VIDEO_NAME}'
+    command = f'{os.path.join(VENV_PATH, "bin", "python3")} {POSE3_SCRIPT_PATH}'
+    #"myvenv/bin/python3" "develop_stridedtransformer_pose3d.py"
+    
+    # command = f'{os.path.join(VENV_PATH, "bin", "python3")} {VIS_SCRIPT_PATH} --video {VIDEO_NAME}'
+    #"myvenv/bin/python3" "3d-human-pose-estimation/demo/vis.py" --video "input_clip.mp4"
     process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=os.environ.copy())
     with open(OUTPUT_LOG_PATH, 'w') as log_file:
         for line in process.stdout:
             if stop_event.is_set():
                 break
-            if any(keyword in line for keyword in [
-                'Generating 2D pose...',
-                'Generating 3D pose...',
-                'Generating demo...',
-                'Generating demo successful!'
-            ]):
+            if any(keyword in line for keyword in valid_messages):
                 log_file.write(line)
                 log_file.flush()
         for line in process.stderr:
@@ -57,22 +69,14 @@ def run_script_from_videofile():
 
 def run_script_from_youtube(url, start, end):
     global process
-    command = f'{os.path.join(VENV_PATH, "bin", "python3")} {SCRIPT_FROM_YOUTUBE} "{url}" {start} {end}'
+    command = f'{os.path.join(VENV_PATH, "bin", "python3")} {POSE3_SCRIPT_PATH} "{url}" {start} {end}'
+    #"myvenv/bin/python3" "develop_stridedtransformer_pose3d.py" "https://youtu.be/wYzGtkcttVE?si=IFku7ImYEIAP7ePM" 3 4
     process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=os.environ.copy())
     with open(OUTPUT_LOG_PATH, 'w') as log_file:
         for line in process.stdout:
             if stop_event.is_set():
                 break
-            if any(keyword in line for keyword in [
-                'Getting available formats for the video...',
-                'Downloading video from YouTube...',
-                'Extracting subclip...',
-                'Changing speed of the video...',
-                'Generating 2D pose...',
-                'Generating 3D pose...',
-                'Generating demo...',
-                'Generating demo successful!'
-            ]):
+            if any(keyword in line for keyword in valid_messages):
                 log_file.write(line)
                 log_file.flush()
         for line in process.stderr:
@@ -130,6 +134,35 @@ def run_script_from_videofile_route():
 
         request_id = request.form.get('requestId', str(uuid.uuid4()))
         file.save(VIDEO_OUTPUT_PATH)
+
+        # # 元のファイル名を取得
+        # original_filename = file.filename
+        # # 一時ファイルの保存パスを設定
+        # temp_video_path = os.path.join(VIDEO_OUTPUT_DIR, original_filename)
+
+        # # アップロードされたファイルを一時的に保存
+        # file.save(temp_video_path)
+        # app.logger.info(f"Video file saved to: {temp_video_path}")
+
+        # # 拡張子を確認して変換するかどうか判断
+        # if not temp_video_path.lower().endswith('.mp4'):
+        #     # MOVや他の形式からMP4に変換
+        #     ffmpeg.input(temp_video_path).output(VIDEO_OUTPUT_PATH).overwrite_output().run()
+        #     app.logger.info(f"Video file converted to MP4: {VIDEO_OUTPUT_PATH}")
+
+        # else:
+        #     # VIDEO_OUTPUT_PATHに既存のファイルがあれば削除
+        #     if os.path.exists(VIDEO_OUTPUT_PATH):
+        #         os.remove(VIDEO_OUTPUT_PATH)
+        #         app.logger.info(f"Existing file at {VIDEO_OUTPUT_PATH} removed.")
+        
+        #     # MP4ファイルを保存
+        #     file.save(VIDEO_OUTPUT_PATH)
+        #     app.logger.info("The file is already in MP4 format and has been overwritten.")
+
+        # # 一時ファイルを削除（変換後）
+        # os.remove(temp_video_path)
+
         app.logger.info(f"Video file saved to: {VIDEO_OUTPUT_PATH}")
 
         script_thread = threading.Thread(target=run_script_from_videofile)
@@ -238,6 +271,7 @@ def check_status():
     実行中のスクリプトのステータスを返すエンドポイント
     """
     if process and process.poll() is None:
+        app.logger.info(f'The process is currently running. PID: {process.pid}, Command: {" ".join(process.args)}')
         return jsonify({'status': 'running'})
     else:
         return jsonify({'status': 'stopped'})
