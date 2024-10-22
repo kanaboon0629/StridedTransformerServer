@@ -163,7 +163,7 @@ if __name__ == '__main__':
                 print(no_refine_path)
                 break
 
-        pre_dict = torch.load(no_refine_path)
+        pre_dict = torch.load(no_refine_path, weights_only=True)
         for name, key in model_dict.items():
             model_dict[name] = pre_dict[name]
         model['trans'].load_state_dict(model_dict)
@@ -179,7 +179,7 @@ if __name__ == '__main__':
                 print(refine_path)
                 break
 
-        pre_dict_refine = torch.load(refine_path)
+        pre_dict_refine = torch.load(refine_path, weights_only=True)
         for name, key in refine_dict.items():
             refine_dict[name] = pre_dict_refine[name]
         model['refine'].load_state_dict(refine_dict)

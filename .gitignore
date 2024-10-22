@@ -184,3 +184,5 @@ cython_debug/
 
 output.json
 output.txt
+
+.DS_Store

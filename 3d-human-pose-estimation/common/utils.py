@@ -150,13 +150,17 @@ class AccumLoss(object):
 def get_varialbe(split, target):
     num = len(target)
     var = []
+    
+    # デバイスを設定（MPSが利用可能であればMPS、そうでなければCPU）
+    device = torch.device('mps') if torch.backends.mps.is_available() else torch.device('cpu')
+    
     if split == 'train':
         for i in range(num):
-            temp = Variable(target[i], requires_grad=False).contiguous().type(torch.cuda.FloatTensor)
+            temp = Variable(target[i], requires_grad=False).contiguous().to(device).type(torch.float32)
             var.append(temp)
     else:
         for i in range(num):
-            temp = Variable(target[i]).contiguous().cuda().type(torch.cuda.FloatTensor)
+            temp = Variable(target[i]).contiguous().to(device).type(torch.float32)
             var.append(temp)
 
     return var
