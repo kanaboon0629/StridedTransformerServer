@@ -13,10 +13,9 @@
             "name": "Python デバッガー: vis.py with video",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/3d-human-pose-estimation/demo/vis.py",
+            "program": "${workspaceFolder}/develop_stridedtransformer_pose3d.py",
             "console": "integratedTerminal",
             "python": "${workspaceFolder}/myvenv/bin/python3",
-            "args": ["--video", "input_clip.mp4"]
         }
     ]
 }

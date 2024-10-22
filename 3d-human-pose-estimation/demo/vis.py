@@ -199,17 +199,29 @@ def get_pose3D(video_path, output_dir):
         raise FileNotFoundError("No valid model file found in the directory")
 
     # print(f"Loading model from {model_path}")
-    map_location = torch.device('cpu')  # デフォルトはCPU
-    if torch.cuda.is_available():
-        map_location = None  # GPUが利用可能な場合はデフォルト設定を使用
+    # デフォルトはCPU
+    map_location = torch.device('cpu')
 
-    pre_dict = torch.load(model_path, map_location=map_location)
+    # AppleシリコンでMPSが利用可能か確認
+    if torch.backends.mps.is_available():
+        map_location = torch.device('mps')  # MPSが利用可能ならMPSを使用
 
-    for name, key in model_dict.items():
-        model_dict[name] = pre_dict[name]
+    # モデルのロード
+    pre_dict = torch.load(model_path, map_location=map_location, weights_only=True)
+
+    # モデルのパラメータを読み込む
+    for name in model_dict.keys():
+        if name in pre_dict:  # pre_dictに同じ名前のパラメータがあるか確認
+            model_dict[name] = pre_dict[name]
+
+    # パラメータをモデルにロード
     model.load_state_dict(model_dict)
-    if torch.cuda.is_available():
-        model.cuda()  # GPUが利用可能な場合はモデルをGPUに移動
+
+    # MPSが利用可能ならモデルをMPSに移動
+    if torch.backends.mps.is_available():
+        model.to(map_location)
+    else:
+        model.to('cpu')  # MPSが使えない場合はCPUを使用
 
     model.eval()
 
@@ -239,6 +251,7 @@ def get_pose3D(video_path, output_dir):
 
         input_2D_no = keypoints[0][start:end+1]
 
+        # パディングの処理
         left_pad, right_pad = 0, 0
         if input_2D_no.shape[0] != args.frames:
             if i < args.pad:
@@ -261,8 +274,12 @@ def get_pose3D(video_path, output_dir):
         input_2D = input_2D[np.newaxis, :, :, :, :]
 
         input_2D = torch.from_numpy(input_2D.astype('float32'))
-        if torch.cuda.is_available():
-            input_2D = input_2D.cuda()  # GPUが利用可能な場合はテンソルをGPUに移動
+        # モデルが使用しているデバイスを取得
+        device = next(model.parameters()).device
+
+        # 入力テンソルをモデルと同じデバイスに移動
+        input_2D = input_2D.to(device)
+        # GPUが利用可能な場合はテンソルをGPUに移動
 
         N = input_2D.size(0)
 
@@ -300,6 +317,7 @@ def get_pose3D(video_path, output_dir):
         joint_coord_dict[i] = d
 
         plt.savefig(output_dir_3D + str(('%04d' % i)) + '_3D.png', dpi=200, format='png', bbox_inches='tight')
+        plt.close(fig)
 
     with open("output.json", "w", encoding="utf-8") as f:
         json.dump(joint_coord_dict, f, indent=4)
@@ -333,6 +351,7 @@ def get_pose3D(video_path, output_dir):
             # 保存
             os.makedirs(output_dir_pose, exist_ok=True)
             plt.savefig(output_dir_pose + str(('%04d' % i)) + '_pose.png', dpi=200, bbox_inches='tight')
+            plt.close(fig)
 
 
 if __name__ == "__main__":
